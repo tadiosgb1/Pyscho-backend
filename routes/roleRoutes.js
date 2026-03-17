@@ -3,11 +3,11 @@ const router = express.Router();
 const roleController = require("../controllers/roleController");
 const authMiddleware = require("../middleware/authMiddleware");
 const permissionMiddleware = require("../middleware/permissionMiddleware");
-router.get("/", authMiddleware, permissionMiddleware("view_role"), roleController.getAll);
+router.get("/", roleController.getAll);
 router.get("/:id", authMiddleware, permissionMiddleware("view_role"), roleController.getOne);
 
 //router.post("/", authMiddleware, permissionMiddleware("create_role"), roleController.create);
-router.post("/", authMiddleware, roleController.create);
+router.post("/",roleController.create);
 
 router.put("/:id", authMiddleware, permissionMiddleware("edit_role"), roleController.update);
 router.patch("/:id", authMiddleware, permissionMiddleware("edit_role"), roleController.patch);

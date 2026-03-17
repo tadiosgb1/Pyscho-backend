@@ -58,8 +58,10 @@ register: async (req, res) => {
   }
 },
 
+
+
   login: async (req, res) => {
-    
+
     console.log("the login please");
 
     try {
@@ -74,6 +76,8 @@ register: async (req, res) => {
       res.json({ id: user.id, email: user.email, roles: user.Roles, permissions: effectivePermissions, accessToken, refreshToken });
     } catch (e) { res.status(500).json({ error: e.message }); }
   },
+
+
 
   refreshToken: (req, res) => {
     const { token } = req.body;
