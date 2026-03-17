@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    container_name: node_api
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_USERNAME: root
+      DB_PASSWORD: password@root
+      DB_NAME: ant_website
+      PORT: 5000
+      JWT_SECRET: SuperSecretKey12345
+      ACCESS_SECRET: SuperSecretKey12345
+      REFRESH_SECRET: SuperSecretKey12345
+    networks:
+      - proxy-network
+    volumes:
+      - /var/www/ant_backend/uploads:/app/uploads   # updated host folder
+networks:
+  proxy-network:
+    external: true
