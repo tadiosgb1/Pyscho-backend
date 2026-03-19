@@ -15,6 +15,5 @@ module.exports = (sequelize, Sequelize) => {
     Result.belongsTo(db.User, { foreignKey: "user_id" });
     Result.belongsTo(db.Test, { foreignKey: "test_id" });
   };
-
   return Result;
 };
