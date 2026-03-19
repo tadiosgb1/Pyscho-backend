@@ -3,7 +3,6 @@ module.exports = (sequelize, DataTypes) => {
     name: { type: DataTypes.STRING, unique: true },
     description: DataTypes.STRING
   });
-
   Role.associate = models => {
     Role.belongsToMany(models.User, { through: "UserRoles" });
     Role.belongsToMany(models.Permission, { through: "RolePermissions" });
