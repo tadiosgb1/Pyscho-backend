@@ -17,11 +17,22 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
 
+    created_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: "Users", key: "id" } // Self-referential FK
+    },
+
     resetToken: DataTypes.STRING,
     resetTokenExpiry: DataTypes.DATE
   });
 
   User.associate = models => {
+    // Self-reference: who created this user
+    User.belongsTo(models.User, {
+      foreignKey: "created_by",
+      as: "creator" // can access as user.creator
+    });
 
     // User belongs to Organization
     User.belongsTo(models.Organization, {
@@ -34,6 +45,12 @@ module.exports = (sequelize, DataTypes) => {
 
     // Permission relations
     User.belongsToMany(models.Permission, { through: "UserPermissions" });
+
+    // Optional: Users created by this user (inverse relation)
+    User.hasMany(models.User, {
+      foreignKey: "created_by",
+      as: "createdUsers"
+    });
   };
 
   return User;

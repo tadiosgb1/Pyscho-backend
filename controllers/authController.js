@@ -11,7 +11,7 @@ register: async (req, res) => {
   console.log("req.body",req.body);
 
   try {
-    const { first_name, middle_name, last_name, phone, email, password } = req.body;
+    const { first_name, middle_name, last_name, phone, email, password,created_by } = req.body;
 
     // Basic validation
     if (!first_name || !last_name || !email || !password) {
@@ -26,6 +26,7 @@ register: async (req, res) => {
       last_name,
       phone,
       email,
+      created_by,
       password: hashedPassword
     });
 

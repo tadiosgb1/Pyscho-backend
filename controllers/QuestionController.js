@@ -1,7 +1,7 @@
 const { Op } = require("sequelize");
 const db = require("../models");
 const Question = db.Question;
-
+const Option=db.Option;
 module.exports = {
   async getAll(req, res) {
     try {
@@ -65,16 +65,40 @@ module.exports = {
     }
   },
 
-  async create(req, res) {
-    try {
-      const body = { ...req.body };
-      
-      const data = await Question.create(body);
-      res.json(data);
-    } catch (e) {
-      res.status(500).json({ error: e.message });
+async create(req, res) {
+  try {
+    const body = { ...req.body };
+    const options = body.options || [];
+
+    delete body.options;
+
+    // 1️⃣ Create Question
+    const question = await Question.create(body);
+
+    // 2️⃣ Create Options AFTER question exists
+    if (options.length > 0) {
+      const optionsToCreate = options.map(opt => ({
+        text: opt.text,
+        triat_id: opt.triat_id,
+        weight: opt.weight || 0,
+        position: opt.position,
+        question_id: question.id // ✅ CRITICAL
+      }));
+
+      await Option.bulkCreate(optionsToCreate);
     }
-  },
+
+    // 3️⃣ Return with options
+    const created = await Question.findByPk(question.id, {
+      include: [{ model: Option }]
+    });
+
+    res.status(201).json(created);
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+},
 
   async update(req, res) {
     try {

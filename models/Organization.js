@@ -3,7 +3,10 @@ module.exports = (sequelize, Sequelize) => {
     id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: Sequelize.STRING },
     address: { type: Sequelize.STRING },
-    contact_email: { type: Sequelize.STRING }
+    official_email: { type: Sequelize.STRING },
+    official_phone: { type: Sequelize.STRING },
+    org_type:{ type: Sequelize.STRING },
+    description:{ type: Sequelize.STRING },
   }, {
     tableName: "organizations"
   });

@@ -43,7 +43,7 @@ async getAll(req, res) {
     {
       model: Organization,
       as: "organization",
-      attributes: ["id", "name", "address", "contact_email"]
+      attributes: ["id", "name", "address", "official_email","official_phone"]
     },
     Role,
     Permission

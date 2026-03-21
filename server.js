@@ -1,5 +1,9 @@
 require("dotenv").config();
 const express = require("express");
+const groupRoutes = require('./routes/groupRoutes.js');
+const categoryRoutes = require('./routes/categoryRoutes.js');
+const optionRoutes = require('./routes/optionRoutes.js');
+const triatRoutes = require('./routes/triatRoutes.js');
 const progressRoutes = require('./routes/progressRoutes.js');
 const resultRoutes = require('./routes/resultRoutes.js');
 const answerRoutes = require('./routes/answerRoutes.js');
@@ -18,7 +22,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
-
 // Mount main routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -32,7 +35,6 @@ db.sequelize.sync({ alter: true })
   // .sync({ alter: true })
   .then(async () => {
     console.log("Database synced");
-
     // Start server first
     app.use("/api/organization", organizationRoutes);
 app.use("/api/test", testRoutes);
@@ -40,6 +42,10 @@ app.use("/api/question", questionRoutes);
 app.use("/api/answer", answerRoutes);
 app.use("/api/result", resultRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/triat", triatRoutes);
+app.use("/api/option", optionRoutes);
+app.use("/api/category", categoryRoutes);
+app.use("/api/group", groupRoutes);
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
   })

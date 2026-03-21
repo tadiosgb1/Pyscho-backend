@@ -1,7 +1,8 @@
 const { Op } = require("sequelize");
 const db = require("../models");
 const Organization = db.Organization;
-
+const bcrypt = require("bcrypt");
+const User=db.User;
 module.exports = {
   async getAll(req, res) {
     try {
@@ -13,7 +14,7 @@ module.exports = {
       if (page < 1) page = 1;
       if (page_size < 1) page_size = 10;
 
-      const searchableFields = ["name", "address", "contact_email"];
+      const searchableFields = ["name", "address", "official_email","official_phone"];
       const searchConditions = searchableFields.map(field => ({ [field]: { [Op.like]: "%" + search + "%" } }));
       const where = search ? { [Op.or]: searchConditions } : {};
       const order = ordering.startsWith("-") ? [[ordering.slice(1), "DESC"]] : [[ordering, "ASC"]];
@@ -65,14 +66,62 @@ module.exports = {
     }
   },
 
-  async create(req, res) {
+   async create(req, res) {
     try {
-      const body = { ...req.body };
-      
-      const data = await Organization.create(body);
-      res.json(data);
+      const { user, organization } = req.body;
+
+      // 🔒 Check if user email already exists
+      const existingUser = await User.findOne({
+        where: { email: user.email },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      // 1️⃣ Create Organization
+      const org = await Organization.create({
+        name: organization.name,
+        official_email: organization.official_email,
+        official_phone: organization.official_phone,
+        org_type: organization.org_type,
+        description: organization.description,
+        address:organization.address
+      });
+
+
+      console.log("org",org);
+      // 2️⃣ Hash Password
+      const hashedPassword = await bcrypt.hash(user.password, 10);
+
+      // 3️⃣ Create User (Admin of Org)
+      const newUser = await User.create({
+        first_name: user.first_name,
+        middle_name: user.middle_name,
+        last_name: user.last_name,
+        email: user.email,
+        phone: user.phone,
+        password: hashedPassword,
+        organization_id: org.id, // ✅ LINK
+        created_by: null, // first user
+      });
+
+      // 4️⃣ Assign Admin Role (optional but recommended)
+      // const adminRole = await Role.findOne({ where: { name: "Admin" } });
+
+      // if (adminRole) {
+      //   await newUser.addRole(adminRole);
+      // }
+
+      // ✅ Response
+      return res.json({
+        message: "Organization and admin user created successfully",
+        organization: org,
+        user: newUser,
+      });
+
     } catch (e) {
-      res.status(500).json({ error: e.message });
+      return res.status(500).json({ error: e.message });
     }
   },
 
