@@ -9,8 +9,8 @@ router.get("/:id", authMiddleware, permissionMiddleware("view_role"), roleContro
 //router.post("/", authMiddleware, permissionMiddleware("create_role"), roleController.create);
 router.post("/",roleController.create);
 
-router.put("/:id", authMiddleware, permissionMiddleware("edit_role"), roleController.update);
-router.patch("/:id", authMiddleware, permissionMiddleware("edit_role"), roleController.patch);
-router.delete("/:id", authMiddleware, permissionMiddleware("delete_role"), roleController.delete);
-router.put("/:id/permissions", authMiddleware, permissionMiddleware("assign_permission"), roleController.assignPermissions);
+router.put("/:id", authMiddleware,  roleController.update);
+router.patch("/:id", authMiddleware, roleController.patch);
+router.delete("/:id", authMiddleware, roleController.delete);
+router.put("/:id/permissions", authMiddleware, roleController.assignPermissions);
 module.exports = router;

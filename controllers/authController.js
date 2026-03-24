@@ -60,23 +60,52 @@ register: async (req, res) => {
 },
 
 
+login: async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  login: async (req, res) => {
+    const user = await User.findOne({
+      where: { email },
+      include: [
+        {
+          model: Role,
+          include: [Permission]  // <--- nested include
+        },
+        {
+          model: Permission
+        }
+      ]
+    });
 
-    console.log("the login please");
+    if (!user) return res.status(400).send("User not found");
 
-    try {
-      const { email, password } = req.body;
-      const user = await User.findOne({ where: { email }, include: [Role, Permission] });
-      if (!user) return res.status(400).send("User not found");
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return res.status(400).send("Invalid password");
-      const accessToken = generateAccessToken(user);
-      const refreshToken = generateRefreshToken(user);
-      const effectivePermissions = [...new Set([...user.Roles.flatMap(r => r.Permissions.map(p => p.code)), ...user.Permissions.map(p => p.code)])];
-      res.json({ id: user.id, email: user.email, roles: user.Roles, permissions: effectivePermissions, accessToken, refreshToken });
-    } catch (e) { res.status(500).json({ error: e.message }); }
-  },
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).send("Invalid password");
+
+    // Flatten all permissions safely
+    const effectivePermissions = [
+      ...new Set([
+        ...(user.Roles?.flatMap(r => r.Permissions?.map(p => p.code) || []) || []),
+        ...(user.Permissions?.map(p => p.code) || [])
+      ])
+    ];
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      roles: user.Roles,
+      permissions: effectivePermissions,
+      accessToken,
+      refreshToken
+    });
+
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+},
 
 
 
