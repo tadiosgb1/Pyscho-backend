@@ -18,6 +18,12 @@ const roleRoutes = require("./routes/roleRoutes");
 const permissionRoutes = require("./routes/permissionRoutes");
 const faqsRoutes = require('./routes/faqsRoutes.js');
 const contactRoutes = require('./routes/contactRoutes.js');
+const userGroupRoutes = require('./routes/userGroupRoutes.js');
+const dashboardRoutes = require('./routes/dashboardRoutes.js');
+const testAssignmentRoutes = require('./routes/testAssignmentRoutes.js');
+const planRoutes         = require('./routes/planRoutes.js');
+const subscriptionRoutes = require('./routes/subscriptionRoutes.js');
+const invoiceRoutes      = require('./routes/invoiceRoutes.js');
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -29,6 +35,12 @@ app.use("/api/roles", roleRoutes);
 app.use("/api/permissions", permissionRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/faqs", faqsRoutes);
+app.use("/api/user-groups", userGroupRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/test-assignments", testAssignmentRoutes);
+app.use("/api/plans",           planRoutes);
+app.use("/api/subscriptions",   subscriptionRoutes);
+app.use("/api/invoices",        invoiceRoutes);
 const PORT = process.env.PORT || 5000;
 // Sync DB and start server
 db.sequelize.sync({ alter: true })

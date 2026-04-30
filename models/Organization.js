@@ -16,6 +16,21 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: "organization_id",
       as: "users"
     });
+
+    Organization.hasMany(models.Group, {
+      foreignKey: "_id",
+      as: "groups"
+    });
+
+    Organization.hasMany(models.Subscription, {
+      foreignKey: "organization_id",
+      as: "subscriptions"
+    });
+
+    Organization.hasMany(models.Invoice, {
+      foreignKey: "organization_id",
+      as: "invoices"
+    });
   };
 
   return Organization;

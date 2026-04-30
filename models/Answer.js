@@ -13,8 +13,9 @@ module.exports = (sequelize, Sequelize) => {
   });
 
   Answer.associate = (db) => {
-    Answer.belongsTo(db.User, { foreignKey: "user_id" });
+    Answer.belongsTo(db.User,     { foreignKey: "user_id" });
     Answer.belongsTo(db.Question, { foreignKey: "question_id" });
+    Answer.belongsTo(db.Option,   { foreignKey: "option_id", as: "Option" });
   };
 
   return Answer;

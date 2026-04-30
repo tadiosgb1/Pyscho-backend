@@ -4,13 +4,14 @@ module.exports = (sequelize, Sequelize) => {
     title: { type: Sequelize.STRING },
     description: { type: Sequelize.STRING },
     duration: { type: Sequelize.STRING },
-    created_by: { type: Sequelize.INTEGER, references: { model: "users", key: "id" } }
+    created_by: { type: Sequelize.INTEGER }
   }, {
     tableName: "tests"
   });
 
   Test.associate = (db) => {
     Test.belongsTo(db.User, { foreignKey: "created_by" });
+    Test.hasMany(db.TestAssignment, { foreignKey: "test_id", as: "assignments" });
   };
 
   return Test;

@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand",
+    "seed": "node seeders/run-all.js",
+    "seed:user-groups": "node seeders/seed-user-groups.js",
+    "seed:roles-permissions": "node seeders/seed-roles-permissions.js",
+    "seed:test-assignments": "node seeders/seed-test-assignments.js",
+    "seed:pricing": "node seeders/seed-pricing.js"
   },
   "keywords": [],
   "author": "",
@@ -19,5 +24,8 @@
     "multer": "^2.0.2",
     "mysql2": "^3.15.3",
     "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0"
   }
 }

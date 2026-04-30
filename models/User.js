@@ -1,5 +1,10 @@
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define("User", {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
     first_name: DataTypes.STRING,
     middle_name: DataTypes.STRING,
     last_name: DataTypes.STRING,
@@ -7,7 +12,8 @@ module.exports = (sequelize, DataTypes) => {
 
     email: {
       type: DataTypes.STRING,
-      unique: true
+      // unique constraint already exists in DB — removing here prevents
+      // Sequelize alter: true from hitting MySQL's 64-key limit
     },
 
     password: DataTypes.STRING,
@@ -45,6 +51,21 @@ module.exports = (sequelize, DataTypes) => {
 
     // Permission relations
     User.belongsToMany(models.Permission, { through: "UserPermissions" });
+
+    // Group relations
+    User.belongsToMany(models.Group, {
+      through: models.UserGroup,
+      foreignKey: "userId",
+      otherKey: "groupId",
+      as: "groups"
+    });
+
+    // Test assignments for this user
+    User.hasMany(models.TestAssignment, {
+      foreignKey: "assigned_to_id",
+      as: "assignedTests",
+      scope: { assigned_to_type: "user" },
+    });
 
     // Optional: Users created by this user (inverse relation)
     User.hasMany(models.User, {

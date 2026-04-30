@@ -47,7 +47,7 @@ register: async (req, res) => {
     res.json({
       id: user.id,
       email: user.email,
-      roles: userData.Roles,
+      roles: userData.Roles.map(r => r.name),
       permissions: effectivePermissions,
       accessToken,
       refreshToken
@@ -96,7 +96,7 @@ login: async (req, res) => {
     res.json({
       id: user.id,
       email: user.email,
-      roles: user.Roles,
+      roles: user.Roles.map(r => r.name),
       permissions: effectivePermissions,
       accessToken,
       refreshToken

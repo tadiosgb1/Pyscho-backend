@@ -16,10 +16,23 @@ module.exports = {
       const searchableFields = ["answer_text"];
       const searchConditions = searchableFields.map(field => ({ [field]: { [Op.like]: "%" + search + "%" } }));
       const where = search ? { [Op.or]: searchConditions } : {};
+
+      // Filter by user_id and/or question_id if provided
+      if (req.query.user_id)     where.user_id     = parseInt(req.query.user_id);
+      if (req.query.question_id) where.question_id = parseInt(req.query.question_id);
+
       const order = ordering.startsWith("-") ? [[ordering.slice(1), "DESC"]] : [[ordering, "ASC"]];
       const offset = (page - 1) * page_size;
 
-      const include = [db.User, db.Question].filter(Boolean);
+      const include = [
+        { model: db.User,     as: "User",     attributes: ["id", "first_name", "last_name", "email"] },
+        { model: db.Question, as: "Question", attributes: ["id", "question_text", "type"],
+          include: [
+            { model: db.Option, order: [["position", "ASC"]] }
+          ]
+        },
+        { model: db.Option,   as: "Option",   attributes: ["id", "text", "weight", "value"], required: false }
+      ].filter(Boolean);
       const findOptions = { where, order, offset, limit: page_size };
       if (include.length) findOptions.include = include;
 

@@ -16,6 +16,12 @@ module.exports = {
       const searchableFields = ["name", "description"];
       const searchConditions = searchableFields.map(field => ({ [field]: { [Op.like]: "%" + search + "%" } }));
       const where = search ? { [Op.or]: searchConditions } : {};
+
+      // Filter by organization _id if provided
+      if (req.query.organization_id) {
+        where._id = parseInt(req.query.organization_id);
+      }
+
       const order = ordering.startsWith("-") ? [[ordering.slice(1), "DESC"]] : [[ordering, "ASC"]];
       const offset = (page - 1) * page_size;
 

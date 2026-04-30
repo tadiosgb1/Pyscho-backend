@@ -1,0 +1,56 @@
+'use strict';
+const bcrypt = require('bcryptjs');
+
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    const hash = await bcrypt.hash('password123', 10);
+    await queryInterface.bulkInsert('Users', [
+      {
+        first_name: 'Admin',
+        middle_name: 'Super',
+        last_name: 'User',
+        phone: '+251911000010',
+        email: 'admin@alphapsycho.com',
+        password: hash,
+        organization_id: 1,
+        created_by: null,
+        resetToken: null,
+        resetTokenExpiry: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        first_name: 'Tadesse',
+        middle_name: 'Bekele',
+        last_name: 'Alemu',
+        phone: '+251911000011',
+        email: 'tadesse@alphapsycho.com',
+        password: hash,
+        organization_id: 1,
+        created_by: 1,
+        resetToken: null,
+        resetTokenExpiry: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        first_name: 'Sara',
+        middle_name: 'Haile',
+        last_name: 'Tesfaye',
+        phone: '+251911000012',
+        email: 'sara@mindwellness.com',
+        password: hash,
+        organization_id: 2,
+        created_by: 1,
+        resetToken: null,
+        resetTokenExpiry: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+  },
+
+  async down(queryInterface, Sequelize) {
+    await queryInterface.bulkDelete('Users', null, {});
+  }
+};
