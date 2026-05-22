@@ -62,6 +62,31 @@ module.exports = {
   }
 },
 
+async getTraitsByCategory(req, res) {
+    try {
+      const categoryId = req.params.id;
+      
+      // Confirm the category actually exists first
+      const categoryExists = await Category.findByPk(categoryId);
+      if (!categoryExists) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      // Query the Triat table directly using the foreign key relationship field
+      const traits = await Triat.findAll({
+        where: { category_id: categoryId },
+        attributes: ["id", "name", "description", "category_id"],
+        order: [["name", "ASC"]] // Alphabetical order keeps your dropdown neat!
+      });
+
+      // Wrap it uniformly in a data payload array
+      res.json({ data: traits });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  }
+,
+
   async getOne(req, res) {
     try {
       const include = [].filter(Boolean);

@@ -68,7 +68,64 @@ module.exports = {
 
    async create(req, res) {
     try {
-      const { user, organization } = req.body;
+      console.log('=== ORGANIZATION CREATE DEBUG ===');
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
+      let user, organization;
+      
+      // Support both nested and flat formats
+      if (req.body.user && req.body.organization) {
+        // Nested format: { user: {...}, organization: {...} }
+        user = req.body.user;
+        organization = req.body.organization;
+      } else {
+        // Flat format: all fields at root level
+        // This happens when the payload is being flattened somewhere
+        user = {
+          first_name: req.body.first_name,
+          middle_name: req.body.middle_name,
+          last_name: req.body.last_name,
+          email: req.body.email,
+          phone: req.body.phone,
+          password: req.body.password,
+        };
+        organization = {
+          name: req.body.name || req.body.org_name,
+          official_email: req.body.official_email || req.body.org_email,
+          official_phone: req.body.official_phone || req.body.org_phone,
+          address: req.body.address,
+          org_type: req.body.org_type,
+          description: req.body.description,
+        };
+      }
+      
+      console.log('User object:', user);
+      console.log('Organization object:', organization);
+
+      // Validate user fields
+      if (!user || !user.email || !user.password || !user.first_name || !user.last_name) {
+        return res.status(400).json({ 
+          error: "Missing required user fields",
+          details: {
+            hasUser: !!user,
+            hasEmail: !!user?.email,
+            hasPassword: !!user?.password,
+            hasFirstName: !!user?.first_name,
+            hasLastName: !!user?.last_name
+          }
+        });
+      }
+
+      // Validate organization fields
+      if (!organization || !organization.name) {
+        return res.status(400).json({ 
+          error: "Missing required organization fields",
+          details: {
+            hasOrganization: !!organization,
+            hasName: !!organization?.name
+          }
+        });
+      }
 
       // 🔒 Check if user email already exists
       const existingUser = await User.findOne({
@@ -86,11 +143,11 @@ module.exports = {
         official_phone: organization.official_phone,
         org_type: organization.org_type,
         description: organization.description,
-        address:organization.address
+        address: organization.address
       });
 
+      console.log("Organization created:", org.id);
 
-      console.log("org",org);
       // 2️⃣ Hash Password
       const hashedPassword = await bcrypt.hash(user.password, 10);
 
@@ -106,21 +163,37 @@ module.exports = {
         created_by: null, // first user
       });
 
-      // 4️⃣ Assign Admin Role (optional but recommended)
-      // const adminRole = await Role.findOne({ where: { name: "Admin" } });
+      console.log("User created:", newUser.id);
 
-      // if (adminRole) {
-      //   await newUser.addRole(adminRole);
-      // }
+      // 4️⃣ Assign Organization Role (id=5 based on your DB)
+      const orgRole = await db.Role.findOne({ where: { name: "organization" } });
+      if (orgRole) {
+        await db.UserRole.create({
+          userId: newUser.id,
+          roleId: orgRole.id
+        });
+        console.log("Organization role assigned:", orgRole.id);
+      } else {
+        console.error("Organization role not found in database!");
+      }
+
+      console.log('=== END DEBUG ===');
 
       // ✅ Response
       return res.json({
         message: "Organization and admin user created successfully",
         organization: org,
-        user: newUser,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          first_name: newUser.first_name,
+          last_name: newUser.last_name,
+          organization_id: newUser.organization_id
+        },
       });
 
     } catch (e) {
+      console.error('Organization create error:', e);
       return res.status(500).json({ error: e.message });
     }
   },

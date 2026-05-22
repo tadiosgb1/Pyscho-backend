@@ -5,6 +5,27 @@ const Group = db.Group;
 module.exports = {
   async getAll(req, res) {
     try {
+      // Check if user is authenticated
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Get current user's role and organization
+      const currentUser = await db.User.findByPk(req.user.id, {
+        include: [{ model: db.Role, attributes: ['name'] }]
+      });
+
+      if (!currentUser) {
+        return res.status(404).json({ error: "Current user not found" });
+      }
+
+      const userRoles = (currentUser.Roles || []).map(r => r.name);
+      const isAdmin = userRoles.includes('admin');
+      const isOrganization = userRoles.includes('organization');
+      const organizationId = currentUser.organization_id;
+
+      console.log('GroupController.getAll:', { userId: req.user.id, userRoles, organizationId });
+
       let page = parseInt(req.query.page) || 1;
       let page_size = parseInt(req.query.page_size) || 10;
       let search = req.query.search || "";
@@ -15,10 +36,27 @@ module.exports = {
 
       const searchableFields = ["name", "description"];
       const searchConditions = searchableFields.map(field => ({ [field]: { [Op.like]: "%" + search + "%" } }));
-      const where = search ? { [Op.or]: searchConditions } : {};
+      const searchWhere = search ? { [Op.or]: searchConditions } : {};
 
-      // Filter by organization _id if provided
-      if (req.query.organization_id) {
+      // 🔒 Role-based filtering
+      let where = { ...searchWhere };
+
+      if (isOrganization && organizationId) {
+        // Organization sees only their own groups
+        where._id = organizationId;
+      } else if (!isAdmin) {
+        // Tester sees only groups they belong to
+        const userGroups = await db.UserGroup.findAll({
+          where: { userId: req.user.id },
+          attributes: ['groupId']
+        });
+        const groupIds = userGroups.map(ug => ug.groupId);
+        where.id = groupIds.length ? { [Op.in]: groupIds } : { [Op.in]: [0] }; // [0] = return nothing
+      }
+      // Admin sees all groups (no additional filter)
+
+      // Allow manual organization_id filter (for admin)
+      if (req.query.organization_id && isAdmin) {
         where._id = parseInt(req.query.organization_id);
       }
 

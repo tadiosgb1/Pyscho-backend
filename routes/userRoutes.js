@@ -5,8 +5,8 @@ const userController = require("../controllers/userController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const permissionMiddleware = require("../middleware/permissionMiddleware");
-//router.get("/", authMiddleware, permissionMiddleware("view_user"), userController.getAll);
-router.get("/", userController.getAll);
+// Apply authMiddleware to protect the route and get user info for role-based filtering
+router.get("/", authMiddleware, userController.getAll);
 router.get("/:id", authMiddleware, userController.getOne);
 router.put("/:id", authMiddleware, userController.update);
 router.patch("/:id", authMiddleware, userController.patch);

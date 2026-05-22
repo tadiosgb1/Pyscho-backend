@@ -95,5 +95,22 @@ module.exports = {
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
+  },
+
+  async updateStatus(req, res) {
+    try {
+      const { status } = req.body;
+      if (!['pending', 'confirmed'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status. Must be pending or confirmed.' });
+      }
+      
+      await Result.update({ status }, { where: { id: req.params.id } });
+      const updated = await Result.findByPk(req.params.id, {
+        include: [db.User, db.Test]
+      });
+      res.json(updated);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   }
 };

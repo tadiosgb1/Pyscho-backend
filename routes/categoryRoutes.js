@@ -2,8 +2,9 @@ const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/CategoryController");
 
-
 router.get("/", controller.getAll);
+// 💡 Add this route right here:
+router.get("/:id/traits", controller.getTraitsByCategory); 
 router.get("/:id", controller.getOne);
 router.post("/",  controller.create);
 router.put("/:id",  controller.update);

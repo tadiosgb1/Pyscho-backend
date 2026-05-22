@@ -20,6 +20,8 @@ module.exports = (sequelize, DataTypes) => {
     },
 
     // The ID of the user or group being assigned
+    // NOTE: This is a polymorphic column — it holds either a user ID or a group ID
+    // depending on assigned_to_type. It must NOT have a FK reference to users.
     assigned_to_id: {
       type: DataTypes.INTEGER,
       allowNull: false,

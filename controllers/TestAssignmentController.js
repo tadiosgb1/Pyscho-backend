@@ -33,6 +33,19 @@ module.exports = {
   // GET /api/test-assignments
   async getAll(req, res) {
     try {
+      // Get current user's role and organization
+      const currentUser = await db.User.findByPk(req.user.id, {
+        include: [{ model: db.Role, attributes: ['name'] }]
+      });
+
+      const userRoles = currentUser.Roles.map(r => r.name);
+      const isAdmin = userRoles.includes('admin');
+      const isOrganization = userRoles.includes('organization');
+      const isTester = userRoles.includes('tester');
+      const organizationId = currentUser.organization_id;
+
+      console.log('TestAssignmentController.getAll:', { userId: req.user.id, userRoles, organizationId });
+
       let page      = parseInt(req.query.page)      || 1;
       let page_size = parseInt(req.query.page_size) || 10;
       if (page < 1)      page      = 1;
@@ -46,6 +59,43 @@ module.exports = {
       if (req.query.assigned_to_id)   where.assigned_to_id   = parseInt(req.query.assigned_to_id);
       if (req.query.assigned_by)      where.assigned_by      = parseInt(req.query.assigned_by);
       if (req.query.status)           where.status           = req.query.status;
+
+      // 🔒 Role-based filtering
+      if (isOrganization && organizationId) {
+        // Organization sees assignments for users in their organization
+        const orgUsers = await db.User.findAll({
+          where: { organization_id: organizationId },
+          attributes: ['id']
+        });
+        const orgUserIds = orgUsers.map(u => u.id);
+
+        // Also get groups belonging to this organization
+        const orgGroups = await db.Group.findAll({
+          where: { _id: organizationId },
+          attributes: ['id']
+        });
+        const orgGroupIds = orgGroups.map(g => g.id);
+
+        // Filter assignments to org users or org groups
+        where[Op.or] = [
+          { assigned_to_type: 'user', assigned_to_id: { [Op.in]: orgUserIds.length ? orgUserIds : [0] } },
+          { assigned_to_type: 'group', assigned_to_id: { [Op.in]: orgGroupIds.length ? orgGroupIds : [0] } }
+        ];
+
+      } else if (isTester && !isAdmin) {
+        // Tester sees only assignments to themselves or their groups
+        const userGroups = await db.UserGroup.findAll({
+          where: { userId: req.user.id },
+          attributes: ['groupId']
+        });
+        const groupIds = userGroups.map(ug => ug.groupId);
+
+        where[Op.or] = [
+          { assigned_to_type: 'user', assigned_to_id: req.user.id },
+          { assigned_to_type: 'group', assigned_to_id: { [Op.in]: groupIds.length ? groupIds : [0] } }
+        ];
+      }
+      // Admin sees all assignments (no additional filter)
 
       const offset = (page - 1) * page_size;
 

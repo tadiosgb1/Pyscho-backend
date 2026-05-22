@@ -24,6 +24,7 @@ const testAssignmentRoutes = require('./routes/testAssignmentRoutes.js');
 const planRoutes         = require('./routes/planRoutes.js');
 const subscriptionRoutes = require('./routes/subscriptionRoutes.js');
 const invoiceRoutes      = require('./routes/invoiceRoutes.js');
+const autoSeed           = require('./utility/autoSeed.js');
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -43,11 +44,15 @@ app.use("/api/subscriptions",   subscriptionRoutes);
 app.use("/api/invoices",        invoiceRoutes);
 const PORT = process.env.PORT || 5000;
 // Sync DB and start server
-db.sequelize.sync({ alter: true })
-  // .sync({ alter: true })
+db.sequelize.sync()
+  // .sync({ alter: true }) — disabled: alter:true re-adds FK constraints on polymorphic columns
   .then(async () => {
     console.log("Database synced");
-    // Start server first
+    
+    // Auto-seed database if not already seeded
+    await autoSeed(db.sequelize);
+    
+    // Start server
     app.use("/api/organization", organizationRoutes);
 app.use("/api/test", testRoutes);
 app.use("/api/question", questionRoutes);

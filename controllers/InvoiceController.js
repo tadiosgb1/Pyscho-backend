@@ -24,10 +24,28 @@ module.exports = {
       if (page < 1)      page      = 1;
       if (page_size < 1) page_size = 10;
 
+      // ── Role-based filtering ────────────────────────────────────────────
+      const userId = req.user?.id;
+      const user = await db.User.findByPk(userId, {
+        include: [{ model: db.Role, attributes: ['name'] }]
+      });
+
+      const userRoles = user?.Roles?.map(r => r.name.toLowerCase()) || [];
+      const isAdmin = userRoles.includes('admin');
+      const organizationId = user?.organization_id;
+
       const where = {};
+
+      // If not admin, filter by organization
+      if (!isAdmin && organizationId) {
+        where.organization_id = organizationId;
+      }
+
+      // Additional query filters
       if (req.query.organization_id)  where.organization_id  = parseInt(req.query.organization_id);
       if (req.query.subscription_id)  where.subscription_id  = parseInt(req.query.subscription_id);
       if (req.query.status)           where.status           = req.query.status;
+      // ────────────────────────────────────────────────────────────────────
 
       const offset = (page - 1) * page_size;
 
@@ -75,6 +93,23 @@ module.exports = {
         ],
       });
       if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+
+      // ── Role-based access check ─────────────────────────────────────────
+      const userId = req.user?.id;
+      const user = await db.User.findByPk(userId, {
+        include: [{ model: db.Role, attributes: ['name'] }]
+      });
+
+      const userRoles = user?.Roles?.map(r => r.name.toLowerCase()) || [];
+      const isAdmin = userRoles.includes('admin');
+      const organizationId = user?.organization_id;
+
+      // Non-admin users can only view their organization's invoices
+      if (!isAdmin && invoice.organization_id !== organizationId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      // ────────────────────────────────────────────────────────────────────
+
       res.json(invoice);
     } catch (e) {
       res.status(500).json({ error: e.message });

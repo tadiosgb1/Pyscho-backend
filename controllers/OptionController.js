@@ -2,6 +2,9 @@ const { Op } = require("sequelize");
 const db = require("../models");
 const Option = db.Option;
 
+const fs = require("fs");
+const path = require("path");
+
 module.exports = {
   async getAll(req, res) {
     try {
@@ -76,17 +79,58 @@ module.exports = {
     }
   },
 
+
+
   async update(req, res) {
     try {
-      const body = { ...req.body };
+      const { id } = req.params;
       
-      await Option.update(body, { where: { id: req.params.id } });
-      const updated = await Option.findByPk(req.params.id);
-      res.json(updated);
+      // 1️⃣ Find the existing option profile record
+      const option = await Option.findByPk(id);
+      if (!option) {
+        return res.status(404).json({ error: "Option profile not found" });
+      }
+
+      // 2️⃣ Pull out all text fields safely
+      const { text, content_type, indication_letter, triat_id, weight, position, existing_image } = req.body;
+
+      let finalOptionSourceText = text;
+
+      // 3️⃣ Core check: Determine what to save based on the file stream presence
+      if (content_type === "image") {
+        if (req.file) {
+          // A new image binary file was uploaded via Multer middleware!
+          finalOptionSourceText = req.file.filename;
+
+          // Optional: Delete the old physical file from your local disk space to keep storage tidy
+          if (option.content_type === "image" && option.text) {
+            const oldFilePath = path.join(__dirname, "../uploads", option.text); // Adjust upload directory target path
+            if (fs.existsSync(oldFilePath)) {
+              fs.unlinkSync(oldFilePath);
+            }
+          }
+        } else if (existing_image) {
+          // No new file uploaded; retain the existing reference link
+          finalOptionSourceText = existing_image;
+        }
+      }
+
+      // 4️⃣ Execute the record updates safely inside the Database instance
+      await option.update({
+        text: finalOptionSourceText,
+        content_type,
+        indication_letter: indication_letter ? indication_letter.toUpperCase().trim() : null,
+        triat_id: triat_id || null, // Gracefully fallbacks empty strings to standard SQL Null entries
+        weight: Number(weight),
+        position: Number(position)
+      });
+
+      res.json({ success: true, data: option });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
-  },
+  }
+,
 
   async delete(req, res) {
     try {

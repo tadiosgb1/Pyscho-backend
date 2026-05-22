@@ -8,54 +8,102 @@ const generateRefreshToken = user => jwt.sign({ id: user.id }, process.env.REFRE
 module.exports = {
 register: async (req, res) => {
   
-  console.log("req.body",req.body);
+  console.log("req.body", req.body);
 
   try {
-    const { first_name, middle_name, last_name, phone, email, password,created_by } = req.body;
+    const { first_name, middle_name, last_name, phone, email, password, created_by } = req.body;
 
     // Basic validation
     if (!first_name || !last_name || !email || !password) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({ error: "Missing required fields: first_name, last_name, email, and password are required" });
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered. Please use a different email or login." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       first_name,
-      middle_name,
+      middle_name: middle_name || null,
       last_name,
-      phone,
+      phone: phone || null,
       email,
-      created_by,
+      created_by: created_by || null,
+      organization_id: null, // Individual users don't belong to an organization
       password: hashedPassword
     });
+
+    // 🎯 Assign Tester role to individual users
+    const testerRole = await Role.findOne({ where: { name: "tester" } });
+    if (testerRole) {
+      const db = require("../models");
+      await db.UserRole.create({
+        userId: user.id,
+        roleId: testerRole.id
+      });
+      console.log("Tester role assigned to user:", user.id);
+    } else {
+      console.error("Tester role not found in database!");
+      return res.status(500).json({ error: "System configuration error: Tester role not found" });
+    }
 
     const accessToken = generateAccessToken(user);
     const refreshToken = generateRefreshToken(user);
 
+    // Fetch user with roles and permissions
     const userData = await User.findByPk(user.id, {
-      include: [Role, Permission]
+      include: [
+        {
+          model: Role,
+          include: [Permission]
+        },
+        Permission
+      ]
     });
 
-    const effectivePermissions = [
-      ...new Set([
-        ...userData.Roles.flatMap(r => r.Permissions.map(p => p.code)),
-        ...userData.Permissions.map(p => p.code)
-      ])
-    ];
+    // Safely extract permissions
+    const rolePermissions = userData.Roles?.flatMap(r => 
+      r.Permissions?.map(p => p.code) || []
+    ) || [];
+    
+    const userPermissions = userData.Permissions?.map(p => p.code) || [];
+    
+    const effectivePermissions = [...new Set([...rolePermissions, ...userPermissions])];
 
     res.json({
       id: user.id,
       email: user.email,
-      roles: userData.Roles.map(r => r.name),
+      first_name: user.first_name,
+      last_name: user.last_name,
+      organization_id: user.organization_id,
+      roles: userData.Roles?.map(r => r.name) || [],
       permissions: effectivePermissions,
       accessToken,
       refreshToken
     });
 
   } catch (e) {
-    console.log("error", e);
-    res.status(500).json({ error: e.message });
+    console.error("Registration error:", e);
+    
+    // Handle Sequelize validation errors
+    if (e.name === 'SequelizeValidationError') {
+      return res.status(400).json({ 
+        error: "Validation error: " + e.errors.map(err => err.message).join(', ')
+      });
+    }
+    
+    // Handle unique constraint errors
+    if (e.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ 
+        error: "Email already registered. Please use a different email."
+      });
+    }
+    
+    res.status(500).json({ error: e.message || "Registration failed" });
   }
 },
 
@@ -96,6 +144,7 @@ login: async (req, res) => {
     res.json({
       id: user.id,
       email: user.email,
+      organization_id: user.organization_id,
       roles: user.Roles.map(r => r.name),
       permissions: effectivePermissions,
       accessToken,
