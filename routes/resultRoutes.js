@@ -93,5 +93,6 @@ router.get('/user/:userId/test/:testId/answers-matrix', async (req, res) => {
     });
   }
 });
+router.get('/user/:userId/test/:testId/answers-matrix', controller.getAnswersMatrix);
 
 module.exports = router;
