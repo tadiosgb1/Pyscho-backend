@@ -5,7 +5,7 @@ module.exports = (sequelize, Sequelize) => {
     interpretation: { type: Sequelize.STRING },
     recommendations: { type: Sequelize.STRING },
     status: { type: Sequelize.ENUM('pending', 'confirmed'), defaultValue: 'pending' },
-    user_id: { type: Sequelize.INTEGER, references: { model: "users", key: "id" } },
+    user_id: { type: Sequelize.INTEGER, references: { model: "Users", key: "id" } },
     test_id: { type: Sequelize.INTEGER, references: { model: "tests", key: "id" } },
     completed_at: { type: Sequelize.DATE }
   }, {

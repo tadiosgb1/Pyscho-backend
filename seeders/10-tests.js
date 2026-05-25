@@ -2,6 +2,15 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const existing = await queryInterface.sequelize.query(
+      "SELECT COUNT(*) AS cnt FROM `tests`",
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    if (existing[0].cnt > 0) {
+      console.log('  ⏭  10-tests: already seeded, skipping.');
+      return;
+    }
+
     await queryInterface.bulkInsert('tests', [
       {
         title: 'MBTI Personality Assessment',

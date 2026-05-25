@@ -5,7 +5,7 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.INTEGER,
         references: { model: "options", key: "id" }
       },
-    user_id: { type: Sequelize.INTEGER, references: { model: "users", key: "id" } },
+    user_id: { type: Sequelize.INTEGER, references: { model: "Users", key: "id" } },
     question_id: { type: Sequelize.INTEGER, references: { model: "questions", key: "id" } },
     submited_at: { type: Sequelize.DATE }
   }, {

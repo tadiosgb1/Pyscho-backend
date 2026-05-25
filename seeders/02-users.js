@@ -3,6 +3,15 @@ const bcrypt = require('bcryptjs');
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const existing = await queryInterface.sequelize.query(
+      "SELECT COUNT(*) AS cnt FROM `Users`",
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    if (existing[0].cnt > 0) {
+      console.log('  ⏭  02-users: already seeded, skipping.');
+      return;
+    }
+
     const hash = await bcrypt.hash('1234', 10);
     await queryInterface.bulkInsert('Users', [
       {

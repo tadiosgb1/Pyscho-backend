@@ -1,38 +1,21 @@
 'use strict';
 
-// Users seeded: 1 = Admin, 2 = Tadesse, 3 = Sara
-// Groups seeded: 1 = Research Team A, 2 = Clinical Group B
-
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const existing = await queryInterface.sequelize.query(
+      "SELECT COUNT(*) AS cnt FROM `user_groups`",
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    if (existing[0].cnt > 0) {
+      console.log('  ⏭  19-user-groups: already seeded, skipping.');
+      return;
+    }
+
     await queryInterface.bulkInsert('user_groups', [
-      // Admin belongs to both groups
-      {
-        userId: 1,
-        groupId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        userId: 1,
-        groupId: 2,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      // Tadesse belongs to Research Team A
-      {
-        userId: 2,
-        groupId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      // Sara belongs to Clinical Group B
-      {
-        userId: 3,
-        groupId: 2,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
+      { userId: 1, groupId: 1, createdAt: new Date(), updatedAt: new Date() },
+      { userId: 1, groupId: 2, createdAt: new Date(), updatedAt: new Date() },
+      { userId: 2, groupId: 1, createdAt: new Date(), updatedAt: new Date() },
+      { userId: 3, groupId: 2, createdAt: new Date(), updatedAt: new Date() }
     ]);
   },
 

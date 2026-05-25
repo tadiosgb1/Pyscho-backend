@@ -2,104 +2,81 @@
 
 /**
  * Auto-seeding utility
- * Runs seeders automatically on first server start
- * Tracks which seeders have been executed to avoid re-seeding
+ *
+ * Each seeder file is responsible for its own idempotency check —
+ * it queries its target table and skips if rows already exist.
+ * This means autoSeed can safely be called on every server start
+ * without risk of duplicate data.
+ *
+ * Table-name casing used in seeders (matches actual MySQL table names):
+ *   Users, Roles, Permissions, RolePermissions, UserRoles, UserPermissions
+ *   organizations, categories, triats, tests, questions, options
+ *   answers, results, progresses, groups, contacts, faks
+ *   user_groups, test_assignments, plans, subscriptions, invoices
  */
 
-const path = require('path');
+const path      = require('path');
 const Sequelize = require('sequelize');
 
-/**
- * Check if seeders have been run by checking if key tables have data
- * @param {Object} sequelize - Sequelize instance
- * @returns {Promise<boolean>} - true if already seeded, false otherwise
- */
-async function isAlreadySeeded(sequelize) {
-  try {
-    // Check if organizations table exists and has data
-    const [results] = await sequelize.query(
-      "SELECT COUNT(*) as count FROM organizations LIMIT 1"
-    );
-    
-    const count = results[0].count;
-    return count > 0;
-  } catch (error) {
-    // Table doesn't exist or query failed - not seeded
-    return false;
-  }
-}
+const SEEDERS = [
+  '01-organizations',
+  '02-users',
+  '03-roles',
+  '04-permissions',
+  '05-role-permissions',
+  '06-user-roles',
+  '07-user-permissions',
+  '08-categories',
+  '09-triats',
+  '10-tests',
+  '11-questions',
+  '12-options',
+  '13-answers',
+  '14-results',
+  '15-progresses',
+  '16-groups',
+  '17-contacts',
+  '18-faqs',
+  '19-user-groups',
+  '20-test-assignments',
+  '21-plans',
+  '22-subscriptions',
+  '23-invoices',
+];
 
 /**
- * Run all seeders in order
- * @param {Object} sequelize - Sequelize instance
+ * Run all seeders in order.
+ * Each seeder skips itself if its table already has rows.
  */
 async function runSeeders(sequelize) {
   const queryInterface = sequelize.getQueryInterface();
-  
-  const seeders = [
-    '01-organizations',
-    '02-users',
-    '03-roles',
-    '04-permissions',
-    '05-role-permissions',
-    '06-user-roles',
-    '07-user-permissions',
-    '08-categories',
-    '09-triats',
-    '10-tests',
-    '11-questions',
-    '12-options',
-    '13-answers',
-    '14-results',
-    '15-progresses',
-    '16-groups',
-    '17-contacts',
-    '18-faqs',
-    '19-user-groups',
-    '20-test-assignments',
-    '21-plans',
-    '22-subscriptions',
-    '23-invoices'
-  ];
 
-  console.log('\n🌱 Running initial database seeders...\n');
+  console.log('\n🌱 Running database seeders...\n');
 
-  // Load and run each seeder
-  for (const seederName of seeders) {
+  for (const name of SEEDERS) {
     try {
-      const seeder = require(path.join(__dirname, '..', 'seeders', `${seederName}.js`));
+      const seeder = require(path.join(__dirname, '..', 'seeders', `${name}.js`));
       await seeder.up(queryInterface, Sequelize);
-      console.log(`  ✓ Seeded: ${seederName}`);
-    } catch (error) {
-      console.error(`  ✗ Failed to seed ${seederName}:`, error.message);
-      throw error;
+      console.log(`  ✓ ${name}`);
+    } catch (err) {
+      console.error(`  ✗ ${name}: ${err.message}`);
+      // Continue to next seeder — don't abort the whole run
     }
   }
 
-  console.log('\n✅ All seeders completed successfully.\n');
+  console.log('\n✅ Seeder run complete.\n');
 }
 
 /**
- * Main auto-seed function
- * Checks if seeding is needed and runs seeders if necessary
- * @param {Object} sequelize - Sequelize instance
+ * Entry point called from server.js after db.sequelize.sync().
+ * Always runs all seeders; each one decides internally whether to skip.
  */
 async function autoSeed(sequelize) {
   try {
-    const alreadySeeded = await isAlreadySeeded(sequelize);
-    
-    if (alreadySeeded) {
-      console.log('ℹ️  Database already seeded. Skipping auto-seed.');
-      return;
-    }
-    
-    console.log('📦 Database is empty. Running seeders...');
     await runSeeders(sequelize);
-    
-  } catch (error) {
-    console.error('❌ Auto-seeding failed:', error.message);
-    console.error('You can manually run seeders using: npm run seed');
-    // Don't throw - allow server to start even if seeding fails
+  } catch (err) {
+    console.error('❌ autoSeed unexpected error:', err.message);
+    // Never crash the server over seeding
   }
 }
 

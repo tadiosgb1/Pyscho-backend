@@ -16,6 +16,12 @@ module.exports = (sequelize, DataTypes) => {
       // Sequelize alter: true from hitting MySQL's 64-key limit
     },
 
+    username: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      // unique — set at DB level; omitted here to avoid alter:true FK issues
+    },
+
     password: DataTypes.STRING,
 
     organization_id: {

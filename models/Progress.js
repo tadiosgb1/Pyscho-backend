@@ -2,7 +2,7 @@ module.exports = (sequelize, Sequelize) => {
   const Progress = sequelize.define("Progress", {
     id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
     score: { type: Sequelize.INTEGER },
-    user_id: { type: Sequelize.INTEGER, references: { model: "users", key: "id" } },
+    user_id: { type: Sequelize.INTEGER, references: { model: "Users", key: "id" } },
     test_id: { type: Sequelize.INTEGER, references: { model: "tests", key: "id" } },
     taken_at: { type: Sequelize.DATE }
   }, {

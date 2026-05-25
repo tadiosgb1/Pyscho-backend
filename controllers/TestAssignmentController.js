@@ -1,19 +1,91 @@
 const { Op } = require("sequelize");
+const bcrypt = require("bcrypt");
 const db = require("../models");
 const TestAssignment = db.TestAssignment;
+const { sendTestAssignmentEmail } = require("../utility/mailer");
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function formatEmailDate(d) {
+  if (!d) return null;
+  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+/**
+ * Generate a readable temporary password, hash it, save it on the user,
+ * and return the plain-text version to include in the email.
+ * Format: GYZ-XXXX-XXXX  (easy to type, hard to guess)
+ */
+async function setTempPassword(user) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars
+  const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const plain = `GYZ-${seg()}-${seg()}`;
+  user.password = await bcrypt.hash(plain, 10);
+  await user.save();
+  return plain;
+}
+
+/**
+ * Derive a unique username from first + last name.
+ * e.g. Sara Tesfaye → sara.tesfaye  (appends a number if taken)
+ */
+async function ensureUsername(user) {
+  if (user.username) return user.username; // already has one
+
+  const base = `${user.first_name}.${user.last_name}`
+    .toLowerCase()
+    .replace(/[^a-z0-9.]/g, ''); // strip special chars
+
+  let candidate = base;
+  let suffix = 1;
+  while (true) {
+    const taken = await db.User.findOne({ where: { username: candidate } });
+    if (!taken || taken.id === user.id) break;
+    candidate = `${base}${suffix++}`;
+  }
+
+  user.username = candidate;
+  await user.save();
+  return candidate;
+}
+
+/**
+ * Send assignment email to a single user.
+ * Generates a temporary password + username, saves them, and emails credentials + test info.
+ */
+async function notifyUser(user, test, assignment) {
+  try {
+    const [tempPassword, username] = await Promise.all([
+      setTempPassword(user),
+      ensureUsername(user),
+    ]);
+    const loginUrl = `${process.env.FRONTEND_URL}/login`;
+
+    await sendTestAssignmentEmail({
+      toEmail:      user.email,
+      firstName:    user.first_name,
+      testTitle:    test.title,
+      testDuration: test.duration || "Not specified",
+      dueDate:      formatEmailDate(assignment.due_date),
+      notes:        assignment.notes || null,
+      loginUrl,
+      userEmail:    user.email,
+      username,
+      tempPassword,
+    });
+    console.log(`[TestAssignment] Notification sent to ${user.email} (username: ${username})`);
+  } catch (e) {
+    console.error(`[TestAssignment] Failed to notify ${user.email}:`, e.message);
+  }
+}
+
 /**
  * Resolve the display name for the assignee (user or group).
- * Returns a plain object with { id, name, email? } or null.
  */
 async function resolveAssignee(type, id) {
   try {
     if (type === "user") {
-      const u = await db.User.findByPk(id, {
-        attributes: ["id", "first_name", "last_name", "email"],
-      });
+      const u = await db.User.findByPk(id, { attributes: ["id", "first_name", "last_name", "email"] });
       if (!u) return null;
       return { id: u.id, name: `${u.first_name} ${u.last_name}`, email: u.email };
     }
@@ -272,6 +344,26 @@ module.exports = {
         status:   "pending",
       });
 
+      // ── Send notification email ──────────────────────────────────────────
+      // Fire-and-forget: don't block the response on email delivery
+      if (assigned_to_type === "user") {
+        const user = await db.User.findByPk(assigned_to_id);
+        if (user && user.email) {
+          notifyUser(user, test, { due_date, notes });
+        }
+      } else if (assigned_to_type === "group") {
+        // Notify every member of the group
+        const memberships = await db.UserGroup.findAll({
+          where: { groupId: assigned_to_id },
+          include: [{ model: db.User, as: "user", attributes: ["id", "first_name", "last_name", "email"] }],
+        });
+        for (const m of memberships) {
+          if (m.user && m.user.email) {
+            notifyUser(m.user, test, { due_date, notes });
+          }
+        }
+      }
+
       // Return with full details
       const result = await TestAssignment.findByPk(record.id, {
         include: [
@@ -337,6 +429,24 @@ module.exports = {
           status:   "pending",
         });
         created.push(record.id);
+
+        // ── Send notification email ────────────────────────────────────────
+        if (type === "user") {
+          const user = await db.User.findByPk(id);
+          if (user && user.email) {
+            notifyUser(user, test, { due_date, notes });
+          }
+        } else if (type === "group") {
+          const memberships = await db.UserGroup.findAll({
+            where: { groupId: id },
+            include: [{ model: db.User, as: "user", attributes: ["id", "first_name", "last_name", "email"] }],
+          });
+          for (const m of memberships) {
+            if (m.user && m.user.email) {
+              notifyUser(m.user, test, { due_date, notes });
+            }
+          }
+        }
       }
 
       res.status(201).json({

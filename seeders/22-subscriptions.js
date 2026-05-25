@@ -1,16 +1,20 @@
 'use strict';
 
-// Organizations: 1 = Alpha Psycho Institute, 2 = Mind & Wellness Center
-// Plans seeded in order: 1=free, 2=starter, 3=professional, 4=enterprise, 5=professional_yearly
-// Admin user: id = 1
-
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const existing = await queryInterface.sequelize.query(
+      "SELECT COUNT(*) AS cnt FROM `subscriptions`",
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    if (existing[0].cnt > 0) {
+      console.log('  ⏭  22-subscriptions: already seeded, skipping.');
+      return;
+    }
+
     const now      = new Date();
     const oneMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const oneYear  = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
 
-    // Fetch plan IDs dynamically to avoid hardcoding
+    // Fetch plan IDs dynamically — avoids hardcoding
     const plans = await queryInterface.sequelize.query(
       "SELECT id, slug FROM `plans`",
       { type: queryInterface.sequelize.QueryTypes.SELECT }
@@ -18,8 +22,12 @@ module.exports = {
     const planMap = {};
     plans.forEach(p => { planMap[p.slug] = p.id; });
 
+    if (!planMap['professional'] || !planMap['starter']) {
+      console.warn('  ⚠  22-subscriptions: required plans not found, skipping.');
+      return;
+    }
+
     await queryInterface.bulkInsert('subscriptions', [
-      // Alpha Psycho Institute → Professional plan
       {
         organization_id:  1,
         plan_id:          planMap['professional'],
@@ -33,11 +41,10 @@ module.exports = {
         used_users:       3,
         used_tests:       1,
         used_assignments: 4,
-        notes:            'Initial subscription for Alpha Psycho Institute.',
+        notes:            'Initial subscription for GYZ Psycho Institute.',
         createdAt:        now,
-        updatedAt:        now,
+        updatedAt:        now
       },
-      // Mind & Wellness Center → Starter plan
       {
         organization_id:  2,
         plan_id:          planMap['starter'],
@@ -53,12 +60,12 @@ module.exports = {
         used_assignments: 2,
         notes:            null,
         createdAt:        now,
-        updatedAt:        now,
-      },
+        updatedAt:        now
+      }
     ]);
   },
 
   async down(queryInterface, Sequelize) {
     await queryInterface.bulkDelete('subscriptions', null, {});
-  },
+  }
 };

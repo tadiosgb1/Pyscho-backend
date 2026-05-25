@@ -2,6 +2,15 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const existing = await queryInterface.sequelize.query(
+      "SELECT COUNT(*) AS cnt FROM `Roles`",
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    if (existing[0].cnt > 0) {
+      console.log('  ⏭  03-roles: already seeded, skipping.');
+      return;
+    }
+
     await queryInterface.bulkInsert('Roles', [
       {
         name: 'admin',

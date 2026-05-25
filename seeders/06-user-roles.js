@@ -2,10 +2,19 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const existing = await queryInterface.sequelize.query(
+      "SELECT COUNT(*) AS cnt FROM `UserRoles`",
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    if (existing[0].cnt > 0) {
+      console.log('  ⏭  06-user-roles: already seeded, skipping.');
+      return;
+    }
+
     await queryInterface.bulkInsert('UserRoles', [
-      { userId: 1, roleId: 1, createdAt: new Date(), updatedAt: new Date() }, // admin → admin role
-      { userId: 2, roleId: 2, createdAt: new Date(), updatedAt: new Date() }, // tadesse → psychologist
-      { userId: 3, roleId: 3, createdAt: new Date(), updatedAt: new Date() }  // sara → user
+      { userId: 1, roleId: 1, createdAt: new Date(), updatedAt: new Date() },
+      { userId: 2, roleId: 2, createdAt: new Date(), updatedAt: new Date() },
+      { userId: 3, roleId: 3, createdAt: new Date(), updatedAt: new Date() }
     ]);
   },
 

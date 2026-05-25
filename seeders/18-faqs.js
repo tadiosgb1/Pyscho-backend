@@ -2,6 +2,16 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // The Faqs model uses tableName "faks" (existing DB table name — kept as-is)
+    const existing = await queryInterface.sequelize.query(
+      "SELECT COUNT(*) AS cnt FROM `faks`",
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    if (existing[0].cnt > 0) {
+      console.log('  ⏭  18-faqs: already seeded, skipping.');
+      return;
+    }
+
     await queryInterface.bulkInsert('faks', [
       {
         question: 'What is the MBTI personality test?',
