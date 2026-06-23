@@ -3,7 +3,7 @@ module.exports = (sequelize, Sequelize) => {
     id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
     title: { type: Sequelize.STRING },
     description: { type: Sequelize.STRING },
-    duration: { type: Sequelize.STRING },
+    duration: { type: Sequelize.INTEGER, defaultValue: 30 },
     created_by: { type: Sequelize.INTEGER }
   }, {
     tableName: "tests"

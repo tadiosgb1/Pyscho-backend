@@ -15,6 +15,44 @@ async function getUserRoles(userId) {
 }
 
 module.exports = {
+
+  // Returns ALL tests with no role-based filtering — used by assignment modals
+  async getAllForAssignment(req, res) {
+    try {
+      let page      = parseInt(req.query.page)      || 1;
+      let page_size = parseInt(req.query.page_size) || 500;
+      let search    = req.query.search              || "";
+
+      if (page < 1)      page      = 1;
+      if (page_size < 1) page_size = 500;
+
+      const searchableFields = ["title", "description", "duration"];
+      const searchConditions = searchableFields.map(f => ({ [f]: { [Op.like]: `%${search}%` } }));
+      const where  = search ? { [Op.or]: searchConditions } : {};
+      const offset = (page - 1) * page_size;
+
+      const { rows, count } = await Test.findAndCountAll({
+        where,
+        order: [["title", "ASC"]],
+        offset,
+        limit: page_size,
+        attributes: ["id", "title", "description", "duration"],
+      });
+
+      res.json({
+        count,
+        total_pages: Math.ceil(count / page_size),
+        current_page: page,
+        next: null,
+        previous: null,
+        page_size,
+        data: rows.map(r => r.toJSON()),
+      });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  },
+
   async getAll(req, res) {
     try {
       let page      = parseInt(req.query.page)      || 1;

@@ -169,73 +169,65 @@ async getAll(req, res) {
     }
   },
   // Add this method to your existing result controller object
-async getAnswersMatrix(req, res) {
-  try {
-    const { userId, testId } = req.params;
+  async getAnswersMatrix(req, res) {
+    try {
+      const { userId, testId } = req.params;
 
-    // 1. Fetch all answers submitted by this user for this specific test
-    const responses = await db.Answer.findAll({
-      where: {
-        user_id: userId,
-        question_id: {
-          [Op.in]: db.sequelize.literal(`(SELECT id FROM questions WHERE test_id = ${testId})`)
-        }
-      },
-      include: [
-        {
-          model: db.Question,
-          attributes: ['id', 'question_text']
-        },
-        {
-          model: db.Option,
-          as: 'Option', // Matches your association alias
-          attributes: ['id', 'option_text', 'is_correct']
-        }
-      ]
-    });
-
-    // 2. Fallback check if no records are found
-    if (!responses.length) {
-      return res.json({
-        success: false,
-        test_id: parseInt(testId),
-        total_questions: 0,
-        score_percentage: 0,
-        questions: {}
+      // Fetch all answers by this user where the question belongs to this test
+      const answers = await db.Answer.findAll({
+        where: { user_id: userId },
+        include: [
+          {
+            model: db.Question,
+            where: { test_id: testId },
+            attributes: ['id', 'question_text', 'type'],
+            required: true,   // INNER JOIN — only answers whose question is in this test
+          },
+          {
+            model: db.Option,
+            as: 'Option',
+            attributes: ['id', 'text', 'value', 'indication_letter'],
+            required: false,  // LEFT JOIN — open-ended answers may have no option
+          },
+        ],
       });
-    }
 
-    // 3. Compute accurate grading percentages and construct the key-value matrix map
-    let correctAnswersCount = 0;
-    const questionsMatrix = {};
-
-    responses.forEach(ans => {
-      if (ans.Question) {
-        const isCorrect = ans.Option?.is_correct || false;
-        if (isCorrect) correctAnswersCount++;
-
-        // Maps structural keys perfectly matching: answersMatrix[item.id].questions
-        questionsMatrix[ans.question_id] = {
-          question_text: ans.Question.question_text,
-          selected_option_text: ans.Option?.option_text || 'Empty response record returned',
-          is_correct: isCorrect
-        };
+      if (!answers.length) {
+        return res.json({
+          success: true,
+          test_id: parseInt(testId),
+          total_questions: 0,
+          score_percentage: 0,
+          questions: {},
+        });
       }
-    });
 
-    const score_percentage = Math.round((correctAnswersCount / responses.length) * 100);
+      // Build question → answer map
+      const questions = {};
+      answers.forEach(ans => {
+        const q   = ans.Question;
+        const opt = ans.Option;
+        if (!q) return;
 
-    // 4. Return structural format matching your component's template requirements
-    res.json({
-      success: true,
-      test_id: parseInt(testId),
-      total_questions: responses.length,
-      score_percentage,
-      questions: questionsMatrix
-    });
+        questions[q.id] = {
+          question_text:        q.question_text,
+          question_type:        q.type,
+          selected_option_text: opt ? opt.text : '—',
+          indication_letter:    opt ? opt.indication_letter : null,
+          option_value:         opt ? opt.value : null,
+        };
+      });
 
-  } catch (e) {
-    res.status(500).json({ success: false, error: e.message });
-  }
-}
+      return res.json({
+        success: true,
+        test_id: parseInt(testId),
+        total_questions: answers.length,
+        questions,
+      });
+
+    } catch (e) {
+      console.error('getAnswersMatrix error:', e);
+      res.status(500).json({ success: false, error: e.message });
+    }
+  },
 };

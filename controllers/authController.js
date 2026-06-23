@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { User, Role, Permission } = require("../models");
+const { Op } = require("sequelize");
 const { sendPasswordResetEmail } = require("../utility/mailer");
 const generateAccessToken = user => jwt.sign({ id: user.id }, process.env.ACCESS_SECRET, { expiresIn: "15m" });
 const generateRefreshToken = user => jwt.sign({ id: user.id }, process.env.REFRESH_SECRET, { expiresIn: "7d" });
@@ -12,28 +13,44 @@ register: async (req, res) => {
   console.log("req.body", req.body);
 
   try {
-    const { first_name, middle_name, last_name, phone, email, password, created_by } = req.body;
+    const userData = { ...req.body };
 
     // Basic validation
-    if (!first_name || !last_name || !email || !password) {
+    if (!userData.first_name || !userData.last_name || !userData.email || !userData.password) {
       return res.status(400).json({ error: "Missing required fields: first_name, last_name, email, and password are required" });
     }
 
     // Check if email already exists
-    const existingUser = await User.findOne({ where: { email } });
+    const existingUser = await User.findOne({ where: { email: userData.email } });
     if (existingUser) {
       return res.status(400).json({ error: "Email already registered. Please use a different email or login." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Handle file uploads
+    if (req.files) {
+      if (req.files.photo) {
+        userData.photo = `/uploads/${req.files.photo[0].filename}`;
+      }
+      if (req.files.cv) {
+        userData.cv = `/uploads/${req.files.cv[0].filename}`;
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
 
     const user = await User.create({
-      first_name,
-      middle_name: middle_name || null,
-      last_name,
-      phone: phone || null,
-      email,
-      created_by: created_by || null,
+      first_name: userData.first_name,
+      middle_name: userData.middle_name || null,
+      last_name: userData.last_name,
+      phone_number: userData.phone_number || userData.phone || null,
+      email: userData.email,
+      date_of_birth: userData.date_of_birth || null,
+      age: userData.age || null,
+      department: userData.department || null,
+      gender: userData.gender || null,
+      photo: userData.photo || null,
+      cv: userData.cv || null,
+      created_by: userData.created_by || null,
       organization_id: null, // Individual users don't belong to an organization
       password: hashedPassword
     });
@@ -56,7 +73,7 @@ register: async (req, res) => {
     const refreshToken = generateRefreshToken(user);
 
     // Fetch user with roles and permissions
-    const userData = await User.findByPk(user.id, {
+    const userWithRoles = await User.findByPk(user.id, {
       include: [
         {
           model: Role,
@@ -67,21 +84,19 @@ register: async (req, res) => {
     });
 
     // Safely extract permissions
-    const rolePermissions = userData.Roles?.flatMap(r => 
+    const rolePermissions = userWithRoles.Roles?.flatMap(r => 
       r.Permissions?.map(p => p.code) || []
     ) || [];
     
-    const userPermissions = userData.Permissions?.map(p => p.code) || [];
-    
+    const userPermissions = userWithRoles.Permissions?.map(p => p.code) || [];
     const effectivePermissions = [...new Set([...rolePermissions, ...userPermissions])];
-
     res.json({
       id: user.id,
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
       organization_id: user.organization_id,
-      roles: userData.Roles?.map(r => r.name) || [],
+      roles: userWithRoles.Roles?.map(r => r.name) || [],
       permissions: effectivePermissions,
       accessToken,
       refreshToken
@@ -113,8 +128,25 @@ login: async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Check if the provided "email" is actually a phone number or email
+    const isPhoneNumber = /^[\+]?[\d\s\-\(\)]+$/.test(email);
+    
+    let whereClause;
+    if (isPhoneNumber) {
+      // Search in both phone and phone_number fields for backward compatibility
+      whereClause = {
+        [Op.or]: [
+          { phone: email },
+          { phone_number: email }
+        ]
+      };
+    } else {
+      // It's an email
+      whereClause = { email };
+    }
+
     const user = await User.findOne({
-      where: { email },
+      where: whereClause,
       include: [
         {
           model: Role,
@@ -126,10 +158,10 @@ login: async (req, res) => {
       ]
     });
 
-    if (!user) return res.status(400).send("User not found");
+    if (!user) return res.status(400).json({ error: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).send("Invalid password");
+    if (!isMatch) return res.status(400).json({ error: "Invalid password" });
 
     // Flatten all permissions safely
     const effectivePermissions = [
@@ -145,14 +177,17 @@ login: async (req, res) => {
     res.json({
       id: user.id,
       email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
       organization_id: user.organization_id,
-      roles: user.Roles.map(r => r.name),
+      roles: user.Roles?.map(r => r.name) || [],
       permissions: effectivePermissions,
       accessToken,
       refreshToken
     });
 
   } catch (e) {
+    console.error("Login error:", e);
     res.status(500).json({ error: e.message });
   }
 },

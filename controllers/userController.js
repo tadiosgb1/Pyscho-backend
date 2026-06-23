@@ -1,6 +1,40 @@
 const { User, Role, Permission,Organization} = require("../models");
 const { Op } = require("sequelize");
+const bcrypt = require("bcrypt");
+
 module.exports = {
+  async create(req, res) {
+    try {
+      const userData = { ...req.body };
+      
+      // Handle file uploads
+      if (req.files) {
+        if (req.files.photo) {
+          userData.photo = `/uploads/${req.files.photo[0].filename}`;
+        }
+        if (req.files.cv) {
+          userData.cv = `/uploads/${req.files.cv[0].filename}`;
+        }
+      }
+      
+      // Hash password if provided
+      if (userData.password) {
+        userData.password = await bcrypt.hash(userData.password, 10);
+      }
+      
+      const user = await User.create(userData);
+      
+      // Remove password from response
+      const userResponse = user.toJSON();
+      delete userResponse.password;
+      
+      res.status(201).json(userResponse);
+    } catch (e) {
+      console.error('User creation error:', e);
+      res.status(500).json({ error: e.message });
+    }
+  },
+
 async getAll(req, res) {
   try {
     // Check if user is authenticated
@@ -38,8 +72,10 @@ async getAll(req, res) {
             { first_name: { [Op.like]: `%${search}%` } },
             { middle_name: { [Op.like]: `%${search}%` } },
             { last_name: { [Op.like]: `%${search}%` } },
+            { phone_number: { [Op.like]: `%${search}%` } },
             { phone: { [Op.like]: `%${search}%` } },
-            { email: { [Op.like]: `%${search}%` } }
+            { email: { [Op.like]: `%${search}%` } },
+            { department: { [Op.like]: `%${search}%` } }
           ]
         }
       : {};
@@ -160,7 +196,41 @@ async getAll(req, res) {
     }
   },
 
-  async patch(req, res) { try { const user = await User.findByPk(req.params.id); if (!user) return res.status(404).json({ error: "Not found" }); Object.assign(user, req.body); await user.save(); res.json(user); } catch (e) { res.status(500).json({ error: e.message }); } },
+  async patch(req, res) { 
+    try { 
+      const user = await User.findByPk(req.params.id); 
+      if (!user) return res.status(404).json({ error: "Not found" }); 
+      
+      const updateData = { ...req.body };
+      
+      // Handle file uploads
+      if (req.files) {
+        if (req.files.photo) {
+          updateData.photo = `/uploads/${req.files.photo[0].filename}`;
+        }
+        if (req.files.cv) {
+          updateData.cv = `/uploads/${req.files.cv[0].filename}`;
+        }
+      }
+      
+      // Hash password if provided
+      if (updateData.password) {
+        updateData.password = await bcrypt.hash(updateData.password, 10);
+      }
+      
+      Object.assign(user, updateData); 
+      await user.save(); 
+      
+      // Remove password from response
+      const userResponse = user.toJSON();
+      delete userResponse.password;
+      
+      res.json(userResponse); 
+    } catch (e) { 
+      console.error('User update error:', e);
+      res.status(500).json({ error: e.message }); 
+    } 
+  },
 
   async update(req, res) { try { const [affected] = await User.update(req.body, { where: { id: req.params.id } }); if (!affected) return res.status(404).json({ error: "Not found" }); const updated = await User.findByPk(req.params.id, { include: [Role, Permission] }); res.json(updated); } catch (e) { res.status(500).json({ error: e.message }); } },
 

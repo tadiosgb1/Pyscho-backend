@@ -9,6 +9,16 @@ module.exports = (sequelize, DataTypes) => {
     middle_name: DataTypes.STRING,
     last_name: DataTypes.STRING,
     phone: DataTypes.STRING,
+    phone_number: { type: DataTypes.STRING },                    // URL/path to profile photo
+    photo: { type: DataTypes.STRING },                    // URL/path to profile photo
+    cv: { type: DataTypes.STRING },                      // URL/path to CV file
+    date_of_birth: { type: DataTypes.DATEONLY },         // Birth date (YYYY-MM-DD)
+    age: { type: DataTypes.INTEGER },                    // Age in years
+    department: { type: DataTypes.STRING },              // Department name (input field)
+    gender: { 
+      type: DataTypes.ENUM('male', 'female', 'other', 'prefer_not_to_say'),
+      allowNull: true 
+    },
 
     email: {
       type: DataTypes.STRING,

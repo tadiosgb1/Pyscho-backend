@@ -2,8 +2,8 @@ module.exports = (sequelize, Sequelize) => {
   const Result = sequelize.define("Result", {
     id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
     score: { type: Sequelize.INTEGER },
-    interpretation: { type: Sequelize.STRING },
-    recommendations: { type: Sequelize.STRING },
+    interpretation: { type: Sequelize.TEXT },
+    recommendations: { type: Sequelize.TEXT },
     status: { type: Sequelize.ENUM('pending', 'confirmed'), defaultValue: 'pending' },
     user_id: { type: Sequelize.INTEGER, references: { model: "Users", key: "id" } },
     test_id: { type: Sequelize.INTEGER, references: { model: "tests", key: "id" } },

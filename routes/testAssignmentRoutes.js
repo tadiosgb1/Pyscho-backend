@@ -4,7 +4,7 @@ const controller = require("../controllers/TestAssignmentController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 // ── List & filter all assignments
-router.get("/", controller.getAll);
+router.get("/", authMiddleware, controller.getAll);
 
 // ── All assignments for a specific user (direct + via groups)
 router.get("/user/:userId", controller.getForUser);
